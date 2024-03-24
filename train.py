@@ -19,9 +19,9 @@ from unet import UNet
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
-dir_img = './data/imgs/'
-dir_mask = './data/masks/'
-dir_checkpoint = './checkpoints/'
+dir_data = "/scratch_net/biwidl301/daizhang/Map-UNet-data" 
+dir_img = os.path.join(dir_data, 'imgs')
+dir_mask = os.path.join(dir_data, 'masks')
 
 
 def train_model(
@@ -50,16 +50,14 @@ def train_model(
     test_dataset = BasicDataset(os.path.join(dir_img, 'test'), 
                                 os.path.join(dir_mask, 'test'), 
                                 img_scale)
-
-    # 2. Split into train / validation partitions
-    # n_val = int(len(dataset) * val_percent)
-    # n_train = len(dataset) - n_val
-    # train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-
+    
+    n_train = len(train_dataset)
+    n_val = len(val_dataset)
+    
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    train_loader = DataLoader(train_dataset, shuffle=True, **loader_args)
+    val_loader = DataLoader(val_dataset, shuffle=False, **loader_args) # drop_last=True
 
     # (Initialize logging)
     experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
