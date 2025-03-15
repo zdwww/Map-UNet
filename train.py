@@ -19,10 +19,10 @@ from unet import UNet
 from utils.data_loading import BasicDataset
 from utils.dice_score import dice_loss
 
-dir_data = "/scratch_net/biwidl301/daizhang/Map-UNet-workspace/data" 
+dir_data = "../data" 
 dir_img = os.path.join(dir_data, 'imgs')
-dir_mask = os.path.join(dir_data, 'masks')
-dir_checkpoint = "/scratch_net/biwidl301/daizhang/Map-UNet-workspace/ckpt" 
+dir_mask = os.path.join(dir_data, 'annotations')
+dir_checkpoint = "../ckpt" 
 
 
 def train_model(
@@ -37,6 +37,7 @@ def train_model(
         weight_decay: float = 1e-8,
         momentum: float = 0.999,
         gradient_clipping: float = 1.0,
+        division_step : int = 1
 ):
     # 1. Create dataset
     train_dataset = BasicDataset(os.path.join(dir_img, 'train'), 
@@ -53,6 +54,8 @@ def train_model(
     
     n_train = len(train_dataset)
     n_val = len(val_dataset)
+    n_test = len(test_dataset)
+    print(f"Train size: {n_train}, Val size: {n_val}, Test size: {n_test}")
     
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=0, pin_memory=True)
@@ -60,6 +63,7 @@ def train_model(
     val_loader = DataLoader(val_dataset, shuffle=False, drop_last=True, **loader_args) 
 
     # (Initialize logging)
+    wandb.login(key="75a89a1a45f5525dc3717034484308953c5e267a")
     experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
     experiment.config.update(
         dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
@@ -76,6 +80,7 @@ def train_model(
         Device:          {device.type}
         Images scaling:  {img_scale}
         Mixed Precision: {amp}
+        Division Step:   {division_step}
     ''')
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
@@ -174,7 +179,7 @@ def train_model(
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks')
     parser.add_argument('--epochs', '-e', metavar='E', type=int, default=5, help='Number of epochs')
-    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=8, help='Batch size')
+    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
     parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=1e-5,
                         help='Learning rate', dest='lr')
     parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
@@ -182,6 +187,7 @@ def get_args():
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=1, help='Number of classes')
+    parser.add_argument('--division_step', type=int, default=1, help='Division step for evaluation')
 
     return parser.parse_args()
 
@@ -218,7 +224,8 @@ if __name__ == '__main__':
             learning_rate=args.lr,
             device=device,
             img_scale=args.scale,
-            amp=args.amp
+            amp=args.amp,
+            division_step = args.division_step
         )
     except torch.cuda.OutOfMemoryError:
         logging.error('Detected OutOfMemoryError! '
@@ -233,5 +240,6 @@ if __name__ == '__main__':
             learning_rate=args.lr,
             device=device,
             img_scale=args.scale,
-            amp=args.amp
+            amp=args.amp,
+            division_step = args.division_step
         )
