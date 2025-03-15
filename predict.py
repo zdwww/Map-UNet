@@ -18,7 +18,7 @@ def predict_img(net,
                 scale_factor=1,
                 out_threshold=0.5):
     net.eval()
-    img = torch.from_numpy(BasicDataset.preprocess(None, full_img, scale_factor, is_mask=False))
+    img = torch.from_numpy(BasicDataset.preprocess(full_img, scale_factor, is_mask=False))
     img = img.unsqueeze(0)
     img = img.to(device=device, dtype=torch.float32)
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     net.load_state_dict(state_dict)
 
     logging.info('Model loaded!')
-
+    print(f"len(in_files): {len(in_files)}")
     for i, filename in enumerate(in_files):
         logging.info(f'Predicting image {filename} ...')
         img = Image.open(filename)
